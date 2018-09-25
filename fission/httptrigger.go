@@ -227,6 +227,7 @@ func htUpdate(c *cli.Context) error {
 		ht.Spec.Host = c.String("host")
 	}
 
+	fmt.Printf("ht.Spec : %v", ht.Spec)
 	_, err = client.HTTPTriggerUpdate(ht)
 	checkErr(err, "update HTTP trigger")
 

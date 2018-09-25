@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # has 2 tests to verify the canary deployments - success scenario and a failure scenario
+#test:disabled
 
 set -euo pipefail
 
