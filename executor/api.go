@@ -24,11 +24,16 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"io"
 
 	"github.com/gorilla/mux"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/fission/fission"
+	"bufio"
+	"bytes"
+	"k8s.io/gengo/testdata/a"
 )
 
 func (executor *Executor) getServiceForFunctionApi(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +117,57 @@ func (executor *Executor) tapService(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (executor *Executor) getPodLogs(w http.ResponseWriter, r *http.Request) {
+	podName := vars["pod"]
+	ns := extractQueryParamFromRequest(r, "namespace")
+
+	// TODO : Change this
+	// write the header
+	w.WriteHeader(http.StatusInternalServerError)
+
+	// get the pod object
+	pod, err := executor.kubernetesClient.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	}
+
+	// get for both containers in the pod
+	var buffer bytes.Buffer
+	for _, container := range pod.Spec.Containers {
+		req := executor.kubernetesClient.CoreV1().Pods(ns).
+			GetLogs(ns, &corev1.PodLogOptions{Container: container.Name})
+
+		stream, err := req.Stream()
+		if err != nil {
+			log.Printf("Error streaming logs for pod %v: %v", pod.Name, err)
+			return
+		}
+
+		reader := bufio.NewReader(stream)
+
+		buffer.WriteString(fmt.Sprintf("===Being container logs: %s ===", container.Name))
+		for {
+			line, _, err := reader.ReadLine()
+			if err != nil {
+				if err == io.EOF {
+					stream.Close()
+					break
+				}
+				log.Printf("Error reading logs from buffer: %v", err)
+				return
+			}
+
+			_, err = buffer.WriteString(string(line) + "\n")
+			if err != nil {
+				log.Printf("Error writing bytes to buffer: %v", err)
+			}
+		}
+		buffer.WriteString(fmt.Sprintf("===End container logs: %s ===", container.Name))
+		stream.Close()
+	}
+	io.WriteString(w, buffer.String())
+}
+
 func (executor *Executor) healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
@@ -120,6 +176,8 @@ func (executor *Executor) Serve(port int) {
 	r := mux.NewRouter()
 	r.HandleFunc("/v2/getServiceForFunction", executor.getServiceForFunctionApi).Methods("POST")
 	r.HandleFunc("/v2/tapService", executor.tapService).Methods("POST")
+	r.HandleFunc("/v2/getPodLogs/{pod}", executor.getPodLogs).Methods("GET")
+
 	r.HandleFunc("/healthz", executor.healthHandler).Methods("GET")
 	address := fmt.Sprintf(":%v", port)
 	log.Printf("starting executor at port %v", port)

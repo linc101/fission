@@ -46,6 +46,7 @@ func MakeClient(executorUrl string) *Client {
 	return c
 }
 
+// TODO : Change the return type of GetServiceForFunction to return {"service": "", "podName": }
 func (c *Client) GetServiceForFunction(metadata *metav1.ObjectMeta) (*http.Response, error) {
 	executorUrl := c.executorUrl + "/v2/getServiceForFunction"
 
@@ -61,6 +62,21 @@ func (c *Client) GetServiceForFunction(metadata *metav1.ObjectMeta) (*http.Respo
 
 	return resp, nil
 }
+
+// TODO : finish this.
+func (c *Client) GetPodLogs(podName, ns string) (*http.Response, error) {
+	executorUrl := c.executorUrl + "/v2/getPodLogs"
+
+	// construct url
+
+	resp, err := http.Get(executorUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 
 func (c *Client) service() {
 	ticker := time.NewTicker(time.Second * 5)

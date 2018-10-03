@@ -168,6 +168,8 @@ func (roundTripper RetryingRoundTripper) RoundTrip(req *http.Request) (resp *htt
 
 			if resp.StatusCode != http.StatusOK {
 				if roundTripper.funcHandler.envType != "production" && len(req.Header.Get(fission.FissionDebugHeader)) != 0 {
+					// TODO : Get last 10 lines of logs due to which GetServiceForFunction errored out.
+					// create an executor client method to getLogs for a pod name and namespace from executor
 					return resp, nil
 				}
 

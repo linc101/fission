@@ -29,6 +29,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/fission/fission"
 	"github.com/fission/fission/cache"
@@ -45,6 +46,7 @@ type (
 		ndm           *newdeploy.NewDeploy
 		functionEnv   *cache.Cache
 		fissionClient *crd.FissionClient
+		kubernetesClient *kubernetes.Clientset
 		fsCache       *fscache.FunctionServiceCache
 
 		requestChan chan *createFuncServiceRequest
@@ -61,12 +63,14 @@ type (
 	}
 )
 
-func MakeExecutor(gpm *poolmgr.GenericPoolManager, ndm *newdeploy.NewDeploy, fissionClient *crd.FissionClient, fsCache *fscache.FunctionServiceCache) *Executor {
+func MakeExecutor(gpm *poolmgr.GenericPoolManager, ndm *newdeploy.NewDeploy, fissionClient *crd.FissionClient, fsCache *fscache.FunctionServiceCache,
+	kubeClient *kubernetes.Clientset) *Executor {
 	executor := &Executor{
 		gpm:           gpm,
 		ndm:           ndm,
 		functionEnv:   cache.MakeCache(10*time.Second, 0),
 		fissionClient: fissionClient,
+		kubernetesClient: kubeClient,
 		fsCache:       fsCache,
 
 		requestChan: make(chan *createFuncServiceRequest),
@@ -261,7 +265,7 @@ func StartExecutor(fissionNamespace string, functionNamespace string, envBuilder
 		fissionClient, kubernetesClient, restClient,
 		functionNamespace, fsCache, poolID)
 
-	api := MakeExecutor(gpm, ndm, fissionClient, fsCache)
+	api := MakeExecutor(gpm, ndm, fissionClient, fsCache, kubernetesClient)
 
 	go api.Serve(port)
 	go serveMetric()

@@ -449,12 +449,17 @@ func (gp *GenericPool) specializePod(pod *apiv1.Pod, metadata *metav1.ObjectMeta
 			continue
 		}
 
+		// Here, we have a pod, but specialization failed due to some errors. so fetch the logs
+
+
 		log.Printf("Failed to specialize pod: %v", err)
 		return err
 	}
 
 	return nil
 }
+
+
 
 // A pool is a deployment of generic containers for an env.  This
 // creates the pool but doesn't wait for any pods to be ready.
